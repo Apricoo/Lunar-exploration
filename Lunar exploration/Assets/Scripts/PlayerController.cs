@@ -12,11 +12,28 @@ public class PlayerController : MonoBehaviour
 	[SerializeField] private float mouseSensitivityX = 3f;     // 鼠标左右灵敏度
 	[SerializeField] private float mouseSensitivityY = 2f;     // 鼠标上下灵敏度
 	[SerializeField] private Vector2 pitchClamp = new Vector2(-40f, 70f); // 俯仰角限制
+	[SerializeField, Range(0f, 0.5f)] private float rotationSmoothTime = 0.05f;
 	[SerializeField] private Transform cameraTransform;        // 目标摄像机（为空则使用主摄像机）
+
+	[Header("坡度检测与贴地")]
+	[SerializeField] private bool enableSlopeLimit = true;
+	[SerializeField] private float maxSlopeAngle = 40f;
+	[SerializeField] private float slopeProbeForwardOffset = 0.6f;
+	[SerializeField] private float slopeProbeHeight = 1f;
+	[SerializeField] private float slopeProbeDownDistance = 3f;
+	[SerializeField] private bool snapToGround = true;
+	[SerializeField] private float groundSnapDistance = 1.5f;
+	[SerializeField] private float groundSnapOffset = 0.05f;
+	[SerializeField] private float groundSnapSpeed = 20f;
+	[SerializeField] private LayerMask groundLayerMask = ~0;
 
 	private Vector3 _cameraOffset; // 相机与玩家的初始偏移，用于环绕
 	private float _currentYaw;
 	private float _currentPitch;
+	private float _targetYaw;
+	private float _targetPitch;
+	private float _yawVelocity;
+	private float _pitchVelocity;
 
 	private void Awake()
 	{
@@ -53,6 +70,8 @@ public class PlayerController : MonoBehaviour
 				_currentYaw = Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg;
 			}
 			_currentPitch = cameraTransform.eulerAngles.x;
+			_targetYaw = _currentYaw;
+			_targetPitch = _currentPitch;
 		}
 	}
 
@@ -60,7 +79,12 @@ public class PlayerController : MonoBehaviour
 	{
 		HandleSpeedAdjust();
 		HandleMovement();
-		HandleCameraRotate();
+		ReadCameraInput();
+	}
+
+	private void LateUpdate()
+	{
+		ApplyCameraRotation();
 	}
 
 	// 上下箭头调整速度（离散步进）
@@ -105,12 +129,23 @@ public class PlayerController : MonoBehaviour
 		if (moveDir.sqrMagnitude > 0f)
 		{
 			moveDir.Normalize();
-			transform.position += moveDir * currentSpeed * Time.deltaTime;
+
+			float moveSpeed = currentSpeed;
+			if (!TryAdjustForSlope(moveDir, out Vector3 adjustedDir, out float speedMultiplier))
+			{
+				return;
+			}
+
+			moveDir = adjustedDir;
+			moveSpeed *= speedMultiplier;
+			transform.position += moveDir * moveSpeed * Time.deltaTime;
 		}
+
+		SnapToGround();
 	}
 
-	// 鼠标控制视角：绕玩家环绕，并限制俯仰角
-	private void HandleCameraRotate()
+	// 鼠标输入采样
+	private void ReadCameraInput()
 	{
 		if (cameraTransform == null)
 		{
@@ -124,8 +159,30 @@ public class PlayerController : MonoBehaviour
 			return;
 		}
 
-		_currentYaw += mouseX * mouseSensitivityX;
-		_currentPitch = Mathf.Clamp(_currentPitch - mouseY * mouseSensitivityY, pitchClamp.x, pitchClamp.y);
+		_targetYaw += mouseX * mouseSensitivityX;
+		_targetPitch = Mathf.Clamp(_targetPitch - mouseY * mouseSensitivityY, pitchClamp.x, pitchClamp.y);
+	}
+
+	// 在 LateUpdate 中统一更新相机姿态，加入插值平滑
+	private void ApplyCameraRotation()
+	{
+		if (cameraTransform == null)
+		{
+			return;
+		}
+
+		float deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
+		float smooth = Mathf.Max(rotationSmoothTime, 0f);
+		if (smooth > 0f)
+		{
+			_currentYaw = Mathf.SmoothDampAngle(_currentYaw, _targetYaw, ref _yawVelocity, smooth, Mathf.Infinity, deltaTime);
+			_currentPitch = Mathf.SmoothDampAngle(_currentPitch, _targetPitch, ref _pitchVelocity, smooth, Mathf.Infinity, deltaTime);
+		}
+		else
+		{
+			_currentYaw = _targetYaw;
+			_currentPitch = _targetPitch;
+		}
 
 		float distance = _cameraOffset.magnitude;
 		Quaternion rotation = Quaternion.Euler(_currentPitch, _currentYaw, 0f);
@@ -168,6 +225,64 @@ public class PlayerController : MonoBehaviour
 	{
 		get => speedStep;
 		set => speedStep = Mathf.Max(0f, value);
+	}
+
+	private bool TryAdjustForSlope(Vector3 moveDir, out Vector3 adjustedDir, out float speedMultiplier)
+	{
+		adjustedDir = moveDir;
+		speedMultiplier = 1f;
+
+		if (!enableSlopeLimit || moveDir.sqrMagnitude <= 0f)
+		{
+			return true;
+		}
+
+		Vector3 origin = transform.position + Vector3.up * slopeProbeHeight;
+		Vector3 forwardOrigin = origin + moveDir.normalized * slopeProbeForwardOffset;
+
+		if (!Physics.Raycast(forwardOrigin, Vector3.down, out RaycastHit hit, slopeProbeDownDistance, groundLayerMask, QueryTriggerInteraction.Ignore))
+		{
+			return true;
+		}
+
+		float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
+		if (slopeAngle > maxSlopeAngle)
+		{
+			return false;
+		}
+
+		Vector3 projected = Vector3.ProjectOnPlane(moveDir, hit.normal);
+		if (projected.sqrMagnitude > 0.0001f)
+		{
+			adjustedDir = projected.normalized;
+		}
+
+		speedMultiplier = Mathf.InverseLerp(maxSlopeAngle, 0f, slopeAngle);
+		return true;
+	}
+
+	private void SnapToGround()
+	{
+		if (!snapToGround)
+		{
+			return;
+		}
+
+		Vector3 origin = transform.position + Vector3.up * (groundSnapDistance * 0.5f);
+		if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, groundSnapDistance, groundLayerMask, QueryTriggerInteraction.Ignore))
+		{
+			return;
+		}
+
+		float targetY = hit.point.y + groundSnapOffset;
+		Vector3 pos = transform.position;
+		if (pos.y >= targetY)
+		{
+			return;
+		}
+
+		pos.y = Mathf.MoveTowards(pos.y, targetY, groundSnapSpeed * Time.deltaTime);
+		transform.position = pos;
 	}
 }
 
