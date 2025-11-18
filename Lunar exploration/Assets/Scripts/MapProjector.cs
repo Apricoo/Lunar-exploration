@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,6 +16,9 @@ public class MapProjector : MonoBehaviour
 
 	[Header("玩家引用")]
 	[SerializeField] private Transform playerTransform;   // 玩家 Transform（可在 Inspector 中拖入）
+
+	[Header("标记物列表")]
+	[SerializeField] private List<MapMarkerEntry> markers = new List<MapMarkerEntry>();
 
 	[Tooltip("如果为 true，世界坐标原点位于地图中心；否则位于左下角。")]
 	[SerializeField] private bool originAtCenter = true;
@@ -36,6 +40,7 @@ public class MapProjector : MonoBehaviour
 	private void Update()
 	{
 		ProjectPlayerToMap();
+		ProjectMarkersToMap();
 	}
 
 	private void ProjectPlayerToMap()
@@ -45,7 +50,54 @@ public class MapProjector : MonoBehaviour
 			return;
 		}
 
-		Vector3 worldPos = playerTransform.position;
+		Vector2 normalized = WorldToNormalized(playerTransform.position);
+
+		Vector2 mapSize = mapImage.rect.size;
+		Vector2 anchoredPos = new Vector2(
+			Mathf.Lerp(-mapSize.x * 0.5f, mapSize.x * 0.5f, normalized.x),
+			Mathf.Lerp(-mapSize.y * 0.5f, mapSize.y * 0.5f, normalized.y));
+
+		playerMarker.anchoredPosition = anchoredPos;
+	}
+
+	private void ProjectMarkersToMap()
+	{
+		if (mapImage == null || markers == null || markers.Count == 0)
+		{
+			return;
+		}
+
+		Vector2 mapSize = mapImage.rect.size;
+
+		for (int i = markers.Count - 1; i >= 0; i--)
+		{
+			MapMarkerEntry entry = markers[i];
+			if (entry == null)
+			{
+				markers.RemoveAt(i);
+				continue;
+			}
+
+			if (entry.IconRect == null || !entry.HasValidTarget)
+			{
+				entry.SetIconVisible(false);
+				continue;
+			}
+
+			Vector3 worldPos = entry.GetWorldPosition();
+			Vector2 normalized = WorldToNormalized(worldPos);
+
+			Vector2 anchoredPos = new Vector2(
+				Mathf.Lerp(-mapSize.x * 0.5f, mapSize.x * 0.5f, normalized.x),
+				Mathf.Lerp(-mapSize.y * 0.5f, mapSize.y * 0.5f, normalized.y));
+
+			entry.SetIconVisible(true);
+			entry.IconRect.anchoredPosition = anchoredPos;
+		}
+	}
+
+	private Vector2 WorldToNormalized(Vector3 worldPos)
+	{
 		Vector2 normalized = originAtCenter
 			? new Vector2(
 				Mathf.InverseLerp(-_halfMapWorldSize.x, _halfMapWorldSize.x, worldPos.x),
@@ -54,15 +106,7 @@ public class MapProjector : MonoBehaviour
 				Mathf.InverseLerp(0f, mapWorldSize.x, worldPos.x),
 				Mathf.InverseLerp(0f, mapWorldSize.y, worldPos.z));
 
-		// 限制在 0-1 范围内，避免 UI 溢出
-		normalized = Vector2.Min(Vector2.one, Vector2.Max(Vector2.zero, normalized));
-
-		Vector2 mapSize = mapImage.rect.size;
-		Vector2 anchoredPos = new Vector2(
-			Mathf.Lerp(-mapSize.x * 0.5f, mapSize.x * 0.5f, normalized.x),
-			Mathf.Lerp(-mapSize.y * 0.5f, mapSize.y * 0.5f, normalized.y));
-
-		playerMarker.anchoredPosition = anchoredPos;
+		return Vector2.Min(Vector2.one, Vector2.Max(Vector2.zero, normalized));
 	}
 
 	/// <summary>
@@ -79,6 +123,85 @@ public class MapProjector : MonoBehaviour
 	public void Refresh()
 	{
 		ProjectPlayerToMap();
+		ProjectMarkersToMap();
+	}
+
+	/// <summary>
+	/// 根据世界目标 Transform 移除对应的地图标记。
+	/// </summary>
+	public void RemoveMarkerByTarget(Transform target, bool destroyIcon = true)
+	{
+		if (target == null || markers == null)
+		{
+			return;
+		}
+
+		for (int i = markers.Count - 1; i >= 0; i--)
+		{
+			MapMarkerEntry entry = markers[i];
+			if (entry == null)
+			{
+				markers.RemoveAt(i);
+				continue;
+			}
+
+			if (entry.Target != target)
+			{
+				continue;
+			}
+
+			entry.DisposeIcon(destroyIcon);
+			markers.RemoveAt(i);
+		}
+	}
+
+	[System.Serializable]
+	private class MapMarkerEntry
+	{
+		[SerializeField] private string markerName;
+		[SerializeField] private Transform worldTarget;                 // 标记所跟踪的 3D 目标
+		[SerializeField] private Image iconImage;                       // 显示在地图上的 UI 图标
+
+		public RectTransform IconRect => iconImage != null ? iconImage.rectTransform : null;
+		public Image IconImage => iconImage;
+		public bool HasValidTarget => worldTarget != null;
+		public Transform Target => worldTarget;
+
+		public Vector3 GetWorldPosition()
+		{
+			return worldTarget != null ? worldTarget.position : Vector3.zero;
+		}
+
+		public void SetIconVisible(bool visible)
+		{
+			if (iconImage == null)
+			{
+				return;
+			}
+
+			iconImage.enabled = visible;
+			if (iconImage.gameObject.activeSelf != visible)
+			{
+				iconImage.gameObject.SetActive(visible);
+			}
+		}
+
+		public void DisposeIcon(bool destroyGameObject)
+		{
+			if (iconImage == null)
+			{
+				return;
+			}
+
+			if (destroyGameObject)
+			{
+				Object.Destroy(iconImage.gameObject);
+			}
+			else
+			{
+				SetIconVisible(false);
+			}
+		}
 	}
 }
 

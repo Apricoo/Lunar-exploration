@@ -9,10 +9,14 @@ public class PlayerController : MonoBehaviour
 
 	[Header("移动与摄像机")]
 	[SerializeField] private bool moveRelativeToCamera = true; // 是否按相机方向移动
-	[SerializeField] private float cameraRotateSpeed = 90f;    // 左右键水平旋转速度（度/秒）
+	[SerializeField] private float mouseSensitivityX = 3f;     // 鼠标左右灵敏度
+	[SerializeField] private float mouseSensitivityY = 2f;     // 鼠标上下灵敏度
+	[SerializeField] private Vector2 pitchClamp = new Vector2(-40f, 70f); // 俯仰角限制
 	[SerializeField] private Transform cameraTransform;        // 目标摄像机（为空则使用主摄像机）
 
-	private Vector3 _cameraOffset; // 相机与玩家的初始偏移，用于水平环绕
+	private Vector3 _cameraOffset; // 相机与玩家的初始偏移，用于环绕
+	private float _currentYaw;
+	private float _currentPitch;
 
 	private void Awake()
 	{
@@ -41,6 +45,14 @@ public class PlayerController : MonoBehaviour
 				_cameraOffset = -back * 5f + Vector3.up * 2f;
 				cameraTransform.position = transform.position + _cameraOffset;
 			}
+
+			Vector3 forward = (transform.position - cameraTransform.position).normalized;
+			Vector3 flat = new Vector3(forward.x, 0f, forward.z);
+			if (flat.sqrMagnitude > 0.0001f)
+			{
+				_currentYaw = Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg;
+			}
+			_currentPitch = cameraTransform.eulerAngles.x;
 		}
 	}
 
@@ -97,7 +109,7 @@ public class PlayerController : MonoBehaviour
 		}
 	}
 
-	// 左右箭头控制视线：让相机围绕玩家做水平旋转
+	// 鼠标控制视角：绕玩家环绕，并限制俯仰角
 	private void HandleCameraRotate()
 	{
 		if (cameraTransform == null)
@@ -105,29 +117,23 @@ public class PlayerController : MonoBehaviour
 			return;
 		}
 
-		float yawInput = 0f;
-		if (Input.GetKey(KeyCode.LeftArrow)) yawInput -= 1f;
-		if (Input.GetKey(KeyCode.RightArrow)) yawInput += 1f;
-
-		if (Mathf.Approximately(yawInput, 0f))
+		float mouseX = Input.GetAxis("Mouse X");
+		float mouseY = Input.GetAxis("Mouse Y");
+		if (Mathf.Approximately(mouseX, 0f) && Mathf.Approximately(mouseY, 0f))
 		{
 			return;
 		}
 
-		float yawDegrees = yawInput * cameraRotateSpeed * Time.deltaTime;
-		// 记录当前俯仰角（x 轴旋转），旋转后恢复，保证 x 轴不变
-		float keepPitch = cameraTransform.eulerAngles.x;
-		// 使用 RotateAround 围绕玩家水平旋转，更稳健
-		cameraTransform.RotateAround(transform.position, Vector3.up, yawDegrees);
+		_currentYaw += mouseX * mouseSensitivityX;
+		_currentPitch = Mathf.Clamp(_currentPitch - mouseY * mouseSensitivityY, pitchClamp.x, pitchClamp.y);
+
+		float distance = _cameraOffset.magnitude;
+		Quaternion rotation = Quaternion.Euler(_currentPitch, _currentYaw, 0f);
+		Vector3 desiredOffset = rotation * Vector3.back * distance;
+
+		cameraTransform.position = transform.position + desiredOffset;
+		cameraTransform.LookAt(transform.position);
 		_cameraOffset = cameraTransform.position - transform.position;
-		// 只根据水平面确定新的 yaw，使相机仍指向玩家，同时保留原有 pitch
-		Vector3 flatDir = transform.position - cameraTransform.position;
-		flatDir.y = 0f;
-		if (flatDir.sqrMagnitude > 0.0001f)
-		{
-			float newYaw = Mathf.Atan2(flatDir.x, flatDir.z) * Mathf.Rad2Deg;
-			cameraTransform.rotation = Quaternion.Euler(keepPitch, newYaw, 0f);
-		}
 	}
 
 	private static Vector2 ReadWASD()
