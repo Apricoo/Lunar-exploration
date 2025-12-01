@@ -5,15 +5,16 @@ TagManager:
   serializedVersion: 2
   tags:
   - Material
+  - TrackingObject
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Ground
   - Water
   - UI
   - rock
-  - 
+  - Map
   - 
   - 
   - 
