@@ -6,6 +6,8 @@ public class MapManager : MonoBehaviour
     public Camera mapCamera;           // 必须拖入 MapCamera 组件
     public GameObject playerUI;        // 玩家原本的 UI
     public Transform playerTransform;  // 玩家的位置（用于打开地图时自动定位）
+    public RectTransform playerMapIcon; // 在 Inspector 里拖入 PlayerMapIcon 的 RectTransform
+    public bool showPlayerLabel = true; // 如果你有文本标签，可以在这里控制
 
     [Header("控制参数")]
     public float zoomSpeed = 20f;      // 滚轮缩放灵敏度
@@ -15,6 +17,8 @@ public class MapManager : MonoBehaviour
 
     private bool isMapOpen = false;
     private Vector3 dragOrigin;        // 记录鼠标拖拽的起始点
+    private Canvas mapCanvas;          // 缓存 Canvas
+    private RectTransform canvasRect;
 
     void Start()
     {
@@ -23,6 +27,13 @@ public class MapManager : MonoBehaviour
         {
             Debug.LogError("MapManager: 未赋值 MapCamera！请在 Inspector 中拖入。");
             return;
+        }
+
+        if (playerMapIcon != null)
+        {
+            mapCanvas = playerMapIcon.GetComponentInParent<Canvas>();
+            if (mapCanvas != null)
+                canvasRect = mapCanvas.GetComponent<RectTransform>();
         }
 
         // 强制设置相机为正交模式 (防止你忘了改 Inspector)
@@ -44,6 +55,48 @@ public class MapManager : MonoBehaviour
             HandleMapControl();
         }
     }
+
+    void LateUpdate()
+    {
+        if (isMapOpen)
+            UpdatePlayerIconPosition();
+    }
+
+    public void UpdatePlayerIconPosition()
+    {
+        // 1) 世界坐标到屏幕坐标
+        Vector3 screenPos = mapCamera.WorldToScreenPoint(playerTransform.position);
+
+        // 判断玩家在相机前面（z > 0）或在视野外
+        if (screenPos.z < 0f)
+        {
+            playerMapIcon.gameObject.SetActive(false);
+            return;
+        }
+        else
+        {
+            if (!playerMapIcon.gameObject.activeSelf) playerMapIcon.gameObject.SetActive(true);
+        }
+
+        // 2) 将屏幕坐标转换为 Canvas 本地坐标（兼容 ScreenSpace-Camera 和 Overlay）
+        Vector2 localPoint;
+        // 如果 Canvas 是 Screen Space - Camera，需要传入 mapCamera；如果 Overlay，传 null 即可。
+        Camera camForUI = (mapCanvas.renderMode == RenderMode.ScreenSpaceCamera) ? mapCanvas.worldCamera : null;
+
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            canvasRect,               // Canvas 的 RectTransform
+            screenPos,                // 屏幕点
+            camForUI,                 // 对于 Overlay 模式这里传 null；对于 Camera 模式传 Canvas 的 Camera（通常等于 mapCamera）
+            out localPoint);
+
+        // 3) 赋值到 UI 元素（使用 anchoredPosition）
+        playerMapIcon.anchoredPosition = localPoint;
+
+        // 可选：旋转图标以指示朝向（如果图标是箭头）
+        // float angle = -playerTransform.eulerAngles.y; // 取 Y 作为航向（视你的模型朝向而定）
+        // playerMapIcon.localRotation = Quaternion.Euler(0,0,angle);
+    }
+
 
     void ToggleMap()
     {

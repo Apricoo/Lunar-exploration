@@ -4,7 +4,7 @@ using UnityEngine;
 public class GravityBody : MonoBehaviour
 {
     // 当前正在吸引我的星球（自动赋值，不需要手动拖）
-    private GravityAttractor currentAttractor;
+    public GravityAttractor currentAttractor { get; private set; }
     private Rigidbody rb;
 
     void Start()
