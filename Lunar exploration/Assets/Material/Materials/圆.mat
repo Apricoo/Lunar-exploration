@@ -33,5 +33,5 @@ Material:
     m_Colors:
     - _AxisColor: {r: 1, g: 0, b: 0, a: 1}
     - _Background: {r: 0, g: 0, b: 0, a: 0}
-    - _Color: {r: 1, g: 0.96022886, b: 0.24056602, a: 1}
+    - _Color: {r: 0.9245283, g: 0.88653827, b: 0.18752226, a: 0.7176471}
   m_BuildTextureStacks: []
