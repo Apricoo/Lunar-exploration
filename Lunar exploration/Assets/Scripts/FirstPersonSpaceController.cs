@@ -40,7 +40,7 @@ public class FirstPersonSpaceController : MonoBehaviour
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
-        distToGround = GetComponent<CapsuleCollider>().bounds.extents.y;
+        distToGround = GetComponent<BoxCollider>().bounds.extents.y;
     }
 
     void Update()

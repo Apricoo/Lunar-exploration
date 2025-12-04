@@ -11,6 +11,8 @@ public class GravityAttractor : MonoBehaviour
     [Tooltip("进入该范围后的空气阻力，建议 1.0 ~ 3.0")]
     public float atmosphereDrag = 1.5f;
 
+    public bool enableRotation = true;
+
     public void Attract(Transform body)
     {
         // 计算引力方向：从物体指向地心
@@ -24,6 +26,8 @@ public class GravityAttractor : MonoBehaviour
             // 取消默认重力，改用我们自定义的力
             rb.AddForce(gravityUp * gravity);
         }
+
+        if (!enableRotation) return; // 禁用旋转时直接返回
 
         // 旋转物体：让物体的脚底始终对准地心
         Quaternion targetRotation = Quaternion.FromToRotation(localUp, gravityUp) * body.rotation;

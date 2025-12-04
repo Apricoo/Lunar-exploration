@@ -6,12 +6,16 @@ public class GravityBody : MonoBehaviour
     // 当前正在吸引我的星球（自动赋值，不需要手动拖）
     public GravityAttractor currentAttractor { get; private set; }
     private Rigidbody rb;
+    private SpaceshipController shipController;
+
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false; // 关闭Unity自带重力
         rb.constraints = RigidbodyConstraints.FreezeRotation; // 冻结物理旋转
+
+        shipController = GetComponent<SpaceshipController>();
     }
 
     void FixedUpdate()
@@ -19,7 +23,24 @@ public class GravityBody : MonoBehaviour
         // 如果当前在某个星球的引力范围内
         if (currentAttractor != null)
         {
+            if (shipController == null)
+            {
+                // 如果飞船未被激活，启用锁视角
+                currentAttractor.enableRotation = true;
+            }
+            else if (shipController != null && shipController.enabled)
+            {
+                // 如果飞船被激活，禁用锁视角
+                currentAttractor.enableRotation = false;
+            }
+            else
+            {
+                // 如果飞船未被激活，启用锁视角
+                currentAttractor.enableRotation = true;
+            }
+
             currentAttractor.Attract(transform);
+
         }
         else
         {
@@ -27,6 +48,9 @@ public class GravityBody : MonoBehaviour
             // 这里可以写太空漂浮逻辑，目前保持惯性即可
             // 如果你希望在太空中慢慢回正，可以在这里写代码
         }
+
+
+
     }
 
     // --- 自动检测引力场 ---
@@ -47,6 +71,8 @@ public class GravityBody : MonoBehaviour
 
             Debug.Log($"进入了 {other.name} 的引力场，阻力设为 {attractor.atmosphereDrag}");
         }
+
+
     }
 
     // 当离开星球的触发器范围
