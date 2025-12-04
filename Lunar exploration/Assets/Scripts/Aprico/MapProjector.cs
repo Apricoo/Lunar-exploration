@@ -27,6 +27,7 @@ public class MapProjector : MonoBehaviour
 
 	private void Awake()
 	{
+		// 缓存地图世界尺寸的一半，方便中心坐标模式下换算
 		_halfMapWorldSize = mapWorldSize * 0.5f;
 	}
 
@@ -53,6 +54,7 @@ public class MapProjector : MonoBehaviour
 		Vector2 normalized = WorldToNormalized(playerTransform.position);
 
 		Vector2 mapSize = mapImage.rect.size;
+		// 将 0-1 归一化坐标映射到 UI 图像的左右/上下边界
 		Vector2 anchoredPos = new Vector2(
 			Mathf.Lerp(-mapSize.x * 0.5f, mapSize.x * 0.5f, normalized.x),
 			Mathf.Lerp(-mapSize.y * 0.5f, mapSize.y * 0.5f, normalized.y));
@@ -87,6 +89,7 @@ public class MapProjector : MonoBehaviour
 			Vector3 worldPos = entry.GetWorldPosition();
 			Vector2 normalized = WorldToNormalized(worldPos);
 
+			// 将世界坐标映射为 UI 位置，驱动各自的图标
 			Vector2 anchoredPos = new Vector2(
 				Mathf.Lerp(-mapSize.x * 0.5f, mapSize.x * 0.5f, normalized.x),
 				Mathf.Lerp(-mapSize.y * 0.5f, mapSize.y * 0.5f, normalized.y));
@@ -98,6 +101,7 @@ public class MapProjector : MonoBehaviour
 
 	private Vector2 WorldToNormalized(Vector3 worldPos)
 	{
+		// 根据原点位置模式决定归一化公式
 		Vector2 normalized = originAtCenter
 			? new Vector2(
 				Mathf.InverseLerp(-_halfMapWorldSize.x, _halfMapWorldSize.x, worldPos.x),
@@ -106,6 +110,7 @@ public class MapProjector : MonoBehaviour
 				Mathf.InverseLerp(0f, mapWorldSize.x, worldPos.x),
 				Mathf.InverseLerp(0f, mapWorldSize.y, worldPos.z));
 
+		// 裁剪到 [0,1] 防止越界
 		return Vector2.Min(Vector2.one, Vector2.Max(Vector2.zero, normalized));
 	}
 

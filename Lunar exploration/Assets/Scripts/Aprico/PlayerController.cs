@@ -5,7 +5,6 @@ public class PlayerController : MonoBehaviour
 	[Header("速度设置")]
 	[SerializeField] private float currentSpeed = 3f; // 当前速度
 	[SerializeField] private float maxSpeed = 12f;    // 最大速度
-	[SerializeField] private float speedStep = 1f;    // 速度增量（每次上下键调整的幅度）
 
 	[Header("移动与摄像机")]
 	[SerializeField] private bool moveRelativeToCamera = true; // 是否按相机方向移动
@@ -77,7 +76,6 @@ public class PlayerController : MonoBehaviour
 
 	private void Update()
 	{
-		HandleSpeedAdjust();
 		HandleMovement();
 		ReadCameraInput();
 	}
@@ -85,19 +83,6 @@ public class PlayerController : MonoBehaviour
 	private void LateUpdate()
 	{
 		ApplyCameraRotation();
-	}
-
-	// 上下箭头调整速度（离散步进）
-	private void HandleSpeedAdjust()
-	{
-		if (Input.GetKeyDown(KeyCode.UpArrow))
-		{
-			currentSpeed = Mathf.Min(currentSpeed + speedStep, maxSpeed);
-		}
-		else if (Input.GetKeyDown(KeyCode.DownArrow))
-		{
-			currentSpeed = Mathf.Max(currentSpeed - speedStep, 0f);
-		}
 	}
 
 	// WASD 平面移动
@@ -219,12 +204,6 @@ public class PlayerController : MonoBehaviour
 	{
 		get => maxSpeed;
 		set => maxSpeed = Mathf.Max(0f, value);
-	}
-
-	public float SpeedStep
-	{
-		get => speedStep;
-		set => speedStep = Mathf.Max(0f, value);
 	}
 
 	private bool TryAdjustForSlope(Vector3 moveDir, out Vector3 adjustedDir, out float speedMultiplier)
