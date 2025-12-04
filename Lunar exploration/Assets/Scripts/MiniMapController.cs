@@ -36,7 +36,7 @@ public class MiniMapController : MonoBehaviour
         }
 
         // 获取玩家当前行星
-        GravityBody gravity = player.GetComponent<GravityBody>();
+        GravityBody gravity = target.GetComponent<GravityBody>();
         Transform planet = null;
         if (gravity.currentAttractor != null)
         {

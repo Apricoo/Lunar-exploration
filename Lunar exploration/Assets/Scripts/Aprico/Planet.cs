@@ -27,7 +27,7 @@ public class SceneTrigger : MonoBehaviour
         // 可选：设置默认半径
         if (triggerCollider.radius <= 0.1f)
         {
-            triggerCollider.radius = 2.0f; // 默认半径2米
+            triggerCollider.radius = 40f; // 默认半径
         }
     }
 
