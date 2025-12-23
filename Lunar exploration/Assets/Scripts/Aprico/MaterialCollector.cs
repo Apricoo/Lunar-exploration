@@ -22,7 +22,7 @@ public class MaterialCollector : MonoBehaviour
 	[SerializeField] private Text material2CountText;
 
 	[Header("性能")]
-	[SerializeField, Range(1, 128)] private int overlapBufferSize = 32;
+	[SerializeField, Range(1, 128)] private int overlapBufferSize = 32;//一次检测 最多能容纳多少个命中的 Collider
 
 	private Collider[] _overlapResults;
 	private int _material1Count;
