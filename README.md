@@ -1,4 +1,8 @@
-这是一个本科虚拟现实的课程作业，主题是探索太空，分为2个部分，在太空中和在星球上。Q键退出程序。
+这是一个本科虚拟现实的课程作业，使用unity2022，主题是探索太空。
+
+This is an undergraduate virtual reality course assignment, developed with Unity 2022, on the theme of space exploration.
+
+程序分为2个部分，在太空中和在星球上。Q键退出程序。
 
 在太空中：
 
@@ -14,11 +18,11 @@ M键打开大地图，实时显示整个星系以及角色位置
 
 小地图
 
-![image-20251224073135681](D:\02Project\Lunar-exploration\image-20251224073135681.png)
+![image-20251224073135681](D:\02Project\Lunar-exploration\小地图.png)
 
 在星球上：
 
-![image-20251224073112044](D:\02Project\Lunar-exploration\image-20251224073112044.png)
+![image-20251224073112044](D:\02Project\Lunar-exploration\月球表面.png)
 
 靠近飞船离开星球，进入太空
 
