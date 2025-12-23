@@ -18,11 +18,11 @@ M键打开大地图，实时显示整个星系以及角色位置
 
 小地图
 
-![image-20251224073135681](D:\02Project\Lunar-exploration\小地图.png)
+![小地图](D:\02Project\Lunar-exploration\小地图.png)
 
 在星球上：
 
-![image-20251224073112044](D:\02Project\Lunar-exploration\月球表面.png)
+![月球表面](D:\02Project\Lunar-exploration\月球表面.png)
 
 靠近飞船离开星球，进入太空
 
